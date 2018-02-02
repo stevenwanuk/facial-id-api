@@ -1,0 +1,133 @@
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<script
+	src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"
+	type="text/javascript"></script>
+</head>
+<body>
+
+	<p>Using Opera Next or Chrome Canary, use this page to take your
+		picture!</p>
+
+	<!--
+		Ideally these elements aren't created until it's confirmed that the
+		client supports video/camera, but for the sake of illustrating the
+		elements involved, they are created with markup (not JavaScript)
+	-->
+	<video id="video" width="640" height="480" hidden="true"
+		autoplay="true"></video>
+	<button id="snap" class="sexyButton">Snap Photo</button>
+	<canvas id="canvas" width="640" height="480"></canvas>
+	<button id="search" class="sexyButton">login</button>
+	<label id="result"></label>
+	<script>
+	/*<![CDATA[*/
+		
+		// Put event listeners into place
+		window.addEventListener("DOMContentLoaded", function() {
+			// Grab elements, create settings, etc.
+            var canvas = document.getElementById('canvas');
+            var context = canvas.getContext('2d');
+            var video = document.getElementById('video');
+            var mediaConfig =  { video: true };
+            var errBack = function(e) {
+            	console.log('An error has occurred!', e)
+            };
+
+            video.addEventListener('play', function() {
+	    		    var $this = this; //cache
+	    		    (function loop() {
+	    		      if (!$this.paused && !$this.ended) {
+	    		    	  context.drawImage($this, 0, 0);
+	    		        setTimeout(loop, 1000 / 30); // drawing at 30fps
+	    		      }
+	    		    })();
+    		  	}, 0);
+            
+			// Put video listeners into place
+            if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia(mediaConfig).then(function(stream) {
+                    video.src = window.URL.createObjectURL(stream);
+                    video.play();
+                });
+            }
+
+            /* Legacy code below! */
+            else if(navigator.getUserMedia) { // Standard
+				navigator.getUserMedia(mediaConfig, function(stream) {
+					video.src = stream;
+					video.play();
+				}, errBack);
+			} else if(navigator.webkitGetUserMedia) { // WebKit-prefixed
+				navigator.webkitGetUserMedia(mediaConfig, function(stream){
+					video.src = window.webkitURL.createObjectURL(stream);
+					video.play();
+				}, errBack);
+			} else if(navigator.mozGetUserMedia) { // Mozilla-prefixed
+				navigator.mozGetUserMedia(mediaConfig, function(stream){
+					video.src = window.URL.createObjectURL(stream);
+					video.play();
+				}, errBack);
+			}
+
+			// Trigger photo take
+			document.getElementById('snap').addEventListener('click', function() {
+				context.drawImage(video, 0, 0, 640, 480);
+			});
+			
+			document.getElementById('search').addEventListener('click', function() {
+				saveCanvasImage();
+			});
+		}, false);
+	
+		function saveCanvasImage(){
+			
+			var canvas = document.getElementById('canvas');
+			var dataURL = canvas.toDataURL();
+			console.log(dataURL);
+		    $.ajax({
+		        url:'/camera/saveCanvasImage',
+		        data:{imageBase64: dataURL},
+		        type: 'post',
+		        dataType: 'json',
+		        timeout: 10000,
+		        async: false,
+		        error: function(){
+		            console.log("WOOPS");
+		        },
+		        success: function(data){
+		        			console.log(data);
+		        			
+		        			if (data.faces.length == 0) {
+		        				
+		        				$("#result").text("no face found");
+		        				return;
+		        			}
+		        			
+						if (data.results.length == 0 || data.results[0].confidence < 70) {
+		        				
+		        				$("#result").text("your face id have not created yet");
+		        				return;
+		        			}
+		        			
+		        			var video = document.getElementById('video');
+		        			video.pause();
+		        			var ctx=document.getElementById('canvas').getContext("2d");
+		        			
+		        			$.each(data.faces, function(i, item) {
+		        				console.log(item);
+		        				var rectangle = item.face_rectangle;
+		        				ctx.rect(rectangle.left, rectangle.top, rectangle.width, rectangle.height);
+							console.log(rectangle);
+							ctx.stroke();
+		        			});
+		        			
+						
+		                $("#result").text("Welcome back,  " + data.results[0].user_id + " " + data.results[0].confidence);
+		        }
+		    });
+		}
+		/*]]>*/
+	</script>
+</body>
+</html>
