@@ -30,7 +30,7 @@ public class FaceController
     @Autowired
     private FaceService faceService;
 
-    @PostMapping
+    @PostMapping("/recognize")
     public FaceDetectResponse recognize(@RequestBody final String base64String)
             throws IOException, Exception
     {
@@ -38,8 +38,8 @@ public class FaceController
         return faceService.detect(Base64.decodeBase64(base64String));
     }
 
-    @PostMapping("/user")
-    public FaceAttachUserIdResponse recognize(@RequestParam final String faceToken,
+    @PostMapping("/attach")
+    public FaceAttachUserIdResponse attachUserId(@RequestParam final String faceToken,
             @RequestParam final String userId) throws IOException, Exception
     {
         return faceService.attachUserIdToFacialId(faceToken, userId);
